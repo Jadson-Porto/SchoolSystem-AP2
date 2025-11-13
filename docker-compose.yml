@@ -1,0 +1,96 @@
+services:
+  db:
+    image: postgres:15
+    container_name: school_db
+    environment:
+      POSTGRES_USER: usuario
+      POSTGRES_PASSWORD: senha123
+      POSTGRES_DB: school
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - school_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U usuario -d school"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: school_app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=app-secret-key-123
+      - DATABASE_URL=postgresql://usuario:senha123@db:5432/school
+    ports:
+      - "5000:5000"
+    networks:
+      - school_network
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: python run.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  reservas:
+    build: ./reservas
+    container_name: school_reservas
+    depends_on:
+      - app
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=reservas-secret-key-123
+      - APP_SERVICE_URL=http://app:5000
+    ports:
+      - "5001:5001"
+    networks:
+      - school_network
+    volumes:
+      - ./reservas:/app
+    working_dir: /app
+    command: python app.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  atividades:
+    build: ./atividades
+    container_name: school_atividades
+    depends_on:
+      - app
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=atividades-secret-key-123
+      - APP_SERVICE_URL=http://app:5000
+    ports:
+      - "5002:5002"
+    networks:
+      - school_network
+    volumes:
+      - ./atividades:/app
+    working_dir: /app
+    command: python app.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  school_network:
+    driver: bridge
+
+volumes:
+  db_data:

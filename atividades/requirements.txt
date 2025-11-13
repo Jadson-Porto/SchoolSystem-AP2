@@ -1,0 +1,4 @@
+Flask==2.3.3
+Flask-RESTful==0.3.10
+Flasgger==0.9.7.1
+requests==2.31.0
